@@ -54,3 +54,5 @@ yarn-error.log*
 .coverage
 coverage/
 *.lcov
+
+medical/uploads/**
