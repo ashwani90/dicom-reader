@@ -5,12 +5,14 @@ from rest_framework import status
 from django.shortcuts import get_object_or_404
 from .models import Case, File
 from .serializers import FileSerializer
-from .utils.dictom_tools import is_dicom_file, anonymize_dicom
+from .utils.dictom_tools import is_dicom_file, anonymize_dicom, save_dicom_metadata
 import fitz
 from PIL import Image
 import pytesseract
 from django.http import FileResponse, Http404
 from django.conf import settings
+from rest_framework import viewsets, permissions
+from .serializers import CaseSerializer
 
 BASE_UPLOAD = "uploads"
 RAW_DIR = os.path.join(BASE_UPLOAD, "raw")
@@ -18,6 +20,16 @@ ANON_DIR = os.path.join(BASE_UPLOAD, "anonymized")
 os.makedirs(RAW_DIR, exist_ok=True)
 os.makedirs(ANON_DIR, exist_ok=True)
 
+class CaseViewSet(viewsets.ModelViewSet):
+    """
+    CRUD API for managing medical imaging cases.
+    """
+    queryset = Case.objects.all().order_by("-created_at")
+    serializer_class = CaseSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)
 
 class FileUploadView(APIView):
     def post(self, request):
@@ -50,6 +62,7 @@ class FileUploadView(APIView):
             os.makedirs(anon_case_dir, exist_ok=True)
             anon_fname = f"{case.case_id}_{uploaded_file.name}".replace(" ", "_")
             anon_path_candidate = os.path.join(anon_case_dir, anon_fname)
+            
 
             ok, modality, err = anonymize_dicom(
                 src_path=raw_path,
@@ -70,6 +83,7 @@ class FileUploadView(APIView):
             is_dicom=is_dcm,
             modality=modality
         )
+        save_dicom_metadata(file_record, raw_path)
 
         serializer = FileSerializer(file_record)
         return Response({"message": "File uploaded successfully", "file": serializer.data})
