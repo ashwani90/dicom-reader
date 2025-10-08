@@ -1,58 +1,55 @@
-# --- Python / Django ---
+# ===============================
+# Django / Python
+# ===============================
 
-# Byte-compiled / optimized / DLL files
+# Python bytecode
+*.pyc
+*.pyo
 __pycache__/
-*.py[cod]
-*$py.class
+*.so
 
-# Virtual environment
-.venv/
-venv/
+# Environment files
 .env
 *.env
-
-# Django stuff:
+.venv
+# Django stuff
 db.sqlite3
+*.log
 media/
 staticfiles/
+__pycache__/
 
-# Migrations (optional if auto-generated)
-*/migrations/__pycache__/
-*.log
-
-# VSCode & IDE
+# IDE / editor files
 .vscode/
 .idea/
+*.swp
+*.swo
 
-# --- Node / React ---
+# ===============================
+# React / Node
+# ===============================
 
-# dependencies
-node_modules/
+# Node modules
+frontend/node_modules/
 
-# build output
-build/
-dist/
-.cache/
+# Build outputs
+frontend/build/
+frontend/.cache/
+frontend/dist/
 
-# dotenv environment variables
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+# Logs
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
 
-# Mac / system files
-.DS_Store
-Thumbs.db
+# Env files
+frontend/.env
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
 
-# --- Logs ---
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# --- Coverage / testing ---
-.coverage
-coverage/
-*.lcov
-
-medical/uploads/**
+# IDE / editor files inside frontend
+frontend/.vscode/
+frontend/.idea/
+frontend/*.swp
