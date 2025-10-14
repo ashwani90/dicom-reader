@@ -53,3 +53,5 @@ frontend/.env.production.local
 frontend/.vscode/
 frontend/.idea/
 frontend/*.swp
+
+./medical/uploads/**/**
