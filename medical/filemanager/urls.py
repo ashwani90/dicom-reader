@@ -1,10 +1,10 @@
 from django.urls import path, include
-from .views import FileUploadView, FilePreviewView, FileListView, serve_file
+from .views import FileUploadView, FilePreviewView, FileListView, UserViewSet, serve_file, CaseViewSet
 from rest_framework.routers import DefaultRouter
-from .views import CaseViewSet
 
 router = DefaultRouter()
 router.register(r"cases", CaseViewSet, basename="case")
+router.register(r'users', UserViewSet, basename='user')
 
 
 urlpatterns = [
