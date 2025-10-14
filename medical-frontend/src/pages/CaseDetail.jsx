@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "../api";
+import FileView from "./FileView";
 
 const CaseDetail = () => {
   const { id } = useParams();
@@ -45,7 +46,8 @@ const CaseDetail = () => {
 
       <div style={sectionStyle}>
         <h3 style={sectionHeadingStyle}>Linked DICOM Files</h3>
-        <table style={tableStyle}>
+        <FileView />
+        {/* <table style={tableStyle}>
           <thead>
             <tr>
               <th style={thStyle}>Filename</th>
@@ -68,7 +70,7 @@ const CaseDetail = () => {
               </tr>
             )}
           </tbody>
-        </table>
+        </table> */}
       </div>
     </div>
   );
