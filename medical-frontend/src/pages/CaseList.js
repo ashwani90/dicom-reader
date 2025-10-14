@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api";
+import FileView from "./FileView";
 
 const CaseList = () => {
   const [cases, setCases] = useState([]);
@@ -31,9 +32,11 @@ const CaseList = () => {
       <table style={tableStyle}>
         <thead>
           <tr>
-            <th style={thStyle}>ID</th>
+            <th style={thStyle}>Case Number</th>
             <th style={thStyle}>Title</th>
             <th style={thStyle}>Patient Name</th>
+            <th style={thStyle}>Patient Age</th>
+            <th style={thStyle}>Patient Sex</th>
             <th style={thStyle}>Created At</th>
             <th style={thStyle}>Actions</th>
           </tr>
@@ -42,9 +45,11 @@ const CaseList = () => {
           {cases.length > 0 ? (
             cases.map((c) => (
               <tr key={c.id} style={rowStyle}>
-                <td style={tdStyle}>{c.id}</td>
+                <td style={tdStyle}>{c.case_id}</td>
                 <td style={tdStyle}>{c.title}</td>
                 <td style={tdStyle}>{c.patient_name || "—"}</td>
+                <td style={tdStyle}>{c.patient_age || "—"}</td>
+                <td style={tdStyle}>{c.patient_sex || "—"}</td>
                 <td style={tdStyle}>{new Date(c.created_at).toLocaleString()}</td>
                 <td style={tdStyle}>
                   <button style={viewButtonStyle} onClick={() => navigate(`/cases/${c.id}`)}>
