@@ -1,7 +1,6 @@
 import os
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
 from django.shortcuts import get_object_or_404
 from .models import Case, File
 from .serializers import FileSerializer
@@ -11,14 +10,39 @@ from PIL import Image
 import pytesseract
 from django.http import FileResponse, Http404
 from django.conf import settings
-from rest_framework import viewsets, permissions
-from .serializers import CaseSerializer
+from rest_framework import viewsets, permissions, decorators, response, status
+from .serializers import CaseSerializer, UserSerializer, UserCreateSerializer
+from django.contrib.auth.models import User
 
 BASE_UPLOAD = "uploads"
 RAW_DIR = os.path.join(BASE_UPLOAD, "raw")
 ANON_DIR = os.path.join(BASE_UPLOAD, "anonymized")
 os.makedirs(RAW_DIR, exist_ok=True)
 os.makedirs(ANON_DIR, exist_ok=True)
+
+class UserViewSet(viewsets.ModelViewSet):
+    queryset = User.objects.all().order_by("id")
+    serializer_class = UserSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return UserCreateSerializer
+        return UserSerializer
+
+    def get_permissions(self):
+        if self.action == "create":
+            return [permissions.AllowAny()]
+        elif self.action in ["list", "destroy"]:
+            return [permissions.IsAdminUser()]
+        return [permissions.IsAuthenticated()]
+
+    @decorators.action(detail=False, methods=["get"], permission_classes=[permissions.IsAuthenticated])
+    def me(self, request):
+        """Return current logged-in user's profile"""
+        serializer = self.get_serializer(request.user)
+        return response.Response(serializer.data)
+
 
 class CaseViewSet(viewsets.ModelViewSet):
     """
