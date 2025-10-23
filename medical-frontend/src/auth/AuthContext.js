@@ -1,6 +1,7 @@
 // src/AuthContext.js
 import React, { createContext, useEffect, useState } from 'react';
 import api from '../api';
+import { sendRequest } from '../request';
 
 export const AuthContext = createContext();
 
@@ -11,7 +12,7 @@ export const AuthProvider = ({ children }) => {
   const loadUser = async () => {
     setLoadingUser(true);
     try {
-      const res = await api.get('/auth/user/'); // cookies sent automatically
+      const res = await sendRequest('get', '/api/auth/user/');
       setUser(res.data);
     } catch (err) {
       setUser(null);
@@ -26,25 +27,29 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (username, password) => {
-    const res = await api.post('/auth/login/', { username, password });
+    const res = await sendRequest('post', '/api/token/', { username, password });
+    localStorage.setItem("access_token", res.data.access);
+    localStorage.setItem("refresh_token", res.data.refresh);
     // server sets cookies; now fetch user
     await loadUser();
     return res;
   };
 
   const register = async (payload) => {
-    const res = await api.post('/auth/register/', payload);
+    const res = await sendRequest('post', '/api/auth/register/', payload);
     return res;
   };
 
   const logout = async () => {
-    await api.post('/auth/logout/');
+    await sendRequest('post', '/api/auth/logout/');
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
     setUser(null);
   };
 
   const refresh = async () => {
     try {
-      await api.post('/auth/refresh/');
+      await sendRequest('post', '/api/auth/refresh/');
       // after refresh, load user to ensure authorization
       await loadUser();
     } catch (err) {
