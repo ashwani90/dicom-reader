@@ -10,6 +10,7 @@ import Navbar from "./components/Navbar";
 import CaseList from "./pages/CaseList";
 import CaseDetail from "./pages/CaseDetail";
 import CaseForm from "./pages/CaseForm";
+import Logout from "./pages/Logout";
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/logout" element={<Logout />} />
 
           {/* Wrap protected routes */}
           <Route
