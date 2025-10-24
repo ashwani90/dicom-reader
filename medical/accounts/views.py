@@ -102,6 +102,7 @@ class LogoutView(APIView):
         return res
 
 class UserView(APIView):
+    
     permission_classes = (permissions.IsAuthenticated,)
     def get(self, request):
         user = request.user
@@ -111,3 +112,16 @@ class UserView(APIView):
             "first_name": user.first_name,
             "last_name": user.last_name
         })
+
+
+class UserListView(APIView):
+    """
+    API to get a list of all users.
+    Only authenticated users can access.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        users = User.objects.all().values("id", "username", "email", "first_name", "last_name")
+        return Response(users, status=status.HTTP_200_OK)
