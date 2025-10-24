@@ -3,6 +3,7 @@ import axios from "axios";
 import api from '../api';
 import DicomModal from './DicomModal';
 import UploadModal from '../components/UploadModal';
+import { sendRequest } from "../request";
 
 const FileView = () => {
   const [files, setFiles] = useState([]);
@@ -53,7 +54,7 @@ const FileView = () => {
   useEffect(() => {
     const fetchFiles = async () => {
       try {
-        const res = await api.get("files/");
+        const res = await sendRequest('get', '/api/files/');
         setFiles(res.data);
       } catch (err) {
         setError("Failed to fetch files. Please try again.");
@@ -86,9 +87,10 @@ const FileView = () => {
     }
   };
 
-  const openSendModal = () => {
+  const openSendModal = async () => {
     if (selectedFiles.length === 0) return alert("Select at least one file.");
-    axios.get("http://localhost:8000/api/users/").then((res) => setUsers(res.data)); // Fetch available users
+    const res = await sendRequest('get', '/api/auth/users/');
+    setUsers(res.data);
     setSendModalOpen(true);
   };
 
