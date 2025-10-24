@@ -9,7 +9,7 @@ const Home = () => {
   useEffect(() => {
     const fetchRequests = async () => {
       try {
-        const res = await sendRequest("get", "/api/requests/"); // API to fetch incoming requests
+        const res = await sendRequest("get", "/api/case-requests/"); // API to fetch incoming requests
         setRequests(res.data);
       } catch (error) {
         console.error("Error fetching requests:", error);
@@ -20,7 +20,8 @@ const Home = () => {
 
   const handleAccept = async (requestId) => {
     try {
-      await sendRequest("post", `/api/requests/${requestId}/accept/`);
+      const payload = { action: "accept" };
+      await sendRequest("post", `/api/case-requests/${requestId}/action/`, payload);
       setRequests((prev) => prev.filter((r) => r.id !== requestId));
     } catch (error) {
       console.error("Error accepting request:", error);
@@ -29,7 +30,8 @@ const Home = () => {
 
   const handleReject = async (requestId) => {
     try {
-      await sendRequest("post", `/api/requests/${requestId}/reject/`);
+      const payload = { action: "reject" };
+      await sendRequest("post", `/api/case-requests/${requestId}/action/`, payload);
       setRequests((prev) => prev.filter((r) => r.id !== requestId));
     } catch (error) {
       console.error("Error rejecting request:", error);
@@ -56,9 +58,9 @@ const Home = () => {
             requests.map((req) => (
               <tr key={req.id} style={rowStyle}>
                 <td style={tdStyle}>{req.id}</td>
-                <td style={tdStyle}>{req.case.case_id}</td>
-                <td style={tdStyle}>{req.case.title || "—"}</td>
-                <td style={tdStyle}>{req.sender.username}</td>
+                <td style={tdStyle}>{req.case_number}</td>
+                <td style={tdStyle}>{req.case_title || "—"}</td>
+                <td style={tdStyle}>{req.sender_name}</td>
                 <td style={tdStyle}>{new Date(req.created_at).toLocaleString()}</td>
                 <td style={tdStyle}>
                   <div style={actionBarStyle}>
@@ -76,7 +78,7 @@ const Home = () => {
                     </button>
                     <button
                       style={viewButtonStyle}
-                      onClick={() => navigate(`/cases/${req.case.id}`)}
+                      onClick={() => navigate(`/cases/${req.case_id}`)}
                     >
                       View
                     </button>
