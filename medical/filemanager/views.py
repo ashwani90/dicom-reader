@@ -2,7 +2,7 @@ import os
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
-from .models import Case, File
+from .models import Case, File, CaseRequest
 from .serializers import FileSerializer
 from .utils.dictom_tools import is_dicom_file, anonymize_dicom, save_dicom_metadata
 import fitz
@@ -11,7 +11,7 @@ import pytesseract
 from django.http import FileResponse, Http404
 from django.conf import settings
 from rest_framework import viewsets, permissions, decorators, response, status
-from .serializers import CaseSerializer, UserSerializer, UserCreateSerializer
+from .serializers import CaseSerializer, UserSerializer, UserCreateSerializer, CaseRequestSerializer
 from django.contrib.auth.models import User
 
 BASE_UPLOAD = "uploads"
@@ -152,34 +152,186 @@ class FilePreviewView(APIView):
         return Response({**serializer.data, "meta": meta, "preview": text_preview})
     
 class FileListView(APIView):
-    # def get(self, request):
-    #     # files = File.objects.all().order_by("-uploaded_at")
-    #     serializer = FileSerializer(files, many=True)
-    #     return Response(serializer.data)
+    
+    permission_classes = [permissions.IsAuthenticated]
     
     def get(self, request):
-        # Static mock data for testing
-        files = File.objects.all().order_by("-uploaded_at")
+        case_id = request.query_params.get("case")
+        if not case_id:
+            return Response(
+                {"error": "Missing required parameter: 'case'"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            case = Case.objects.get(id=case_id)
+        except Case.DoesNotExist:
+            return Response({"error": "Case not found."}, status=status.HTTP_404_NOT_FOUND)
+        
+        user = request.user
+
+        # Case owner → full access
+        print(case.created_by)
+        print(user)
+        if case.created_by == user:
+            files = File.objects.filter(case=case).order_by("-uploaded_at")
+        else:
+            # Non-owner → only shared files
+            shared_requests = CaseRequest.objects.filter(
+                case=case,
+                receiver=user,
+                # status="accepted"
+            ).prefetch_related("files")
+
+            # Collect shared file IDs
+            shared_file_ids = set()
+            for req in shared_requests:
+                shared_file_ids.update(req.files.values_list("id", flat=True))
+
+            files = File.objects.filter(id__in=shared_file_ids).order_by("-uploaded_at")
         serializer = FileSerializer(files, many=True)
         return Response(serializer.data)
     
+class FileSendView(APIView):
+    """
+    API endpoint to send selected DICOM files to another user.
+    Creates a new CaseRequest entry.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        try:
+            receiver_id = request.data.get("receiver_id")
+            file_ids = request.data.get("file_ids", [])
+            case_id = request.data.get("case_id")
+            message = request.data.get("message", "")
+
+            if not receiver_id or not file_ids:
+                return Response(
+                    {"error": "receiver_id and file_ids are required."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            receiver = get_object_or_404(User, id=receiver_id)
+            sender = request.user
+
+            # Validate files and ensure they belong to the case (optional)
+            files = File.objects.filter(id__in=file_ids)
+            if not files.exists():
+                return Response(
+                    {"error": "No valid files found for provided IDs."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # If case is not provided, infer from first file
+            case = None
+            if case_id:
+                case = get_object_or_404(Case, id=case_id)
+            elif hasattr(files.first(), "case"):
+                case = files.first().case
+
+            if not case:
+                return Response(
+                    {"error": "Case not provided or could not be inferred."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Prevent duplicate requests
+            existing = CaseRequest.objects.filter(
+                case=case, sender=sender, receiver=receiver, status="pending"
+            ).first()
+            if existing:
+                return Response(
+                    {"error": "A pending request to this user for this case already exists."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Create new CaseRequest
+            case_request = CaseRequest.objects.create(
+                case=case,
+                sender=sender,
+                receiver=receiver,
+                message=message,
+            )
+            case_request.files.set(files)
+            case_request.save()
+
+            serializer = CaseRequestSerializer(case_request)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            return Response(
+                {"error": f"An unexpected error occurred: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+            
+class CaseRequestListView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        case_requests = CaseRequest.objects.filter(receiver=user, status='pending').select_related("case", "sender", "receiver").prefetch_related("files")
+        serializer = CaseRequestSerializer(case_requests, many=True)
+        return Response(serializer.data)
     
-def serve_file(request, filename):
+class CaseRequestActionView(APIView):
+    """
+    Allows a receiver to accept or reject a case request.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        try:
+            case_request = CaseRequest.objects.get(pk=pk)
+        except CaseRequest.DoesNotExist:
+            return Response({"error": "Case request not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Ensure only the receiver can take action
+        if case_request.receiver != request.user:
+            return Response(
+                {"error": "You do not have permission to modify this request."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        action = request.data.get("action")
+        if action not in ["accept", "reject"]:
+            return Response(
+                {"error": "Invalid action. Must be 'accept' or 'reject'."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Update the status
+        case_request.status = "accepted" if action == "accept" else "rejected"
+        case_request.save()
+
+        return Response(
+            {
+                "message": f"Case request {action}ed successfully.",
+                "status": case_request.status,
+                "case_request_id": case_request.id,
+            },
+            status=status.HTTP_200_OK,
+        )
+    
+    
+def serve_file(request, file_id):
     """
     Serve a file from uploads folder.
     Example: /serve-file/sample.pdf
     """
-    file = get_object_or_404(File, id=filename)
+    # print("Serving file with ID:", file_id)
+    file = get_object_or_404(File, id=file_id)
+    # print("Found file:", file.filename)
 
     # FieldFile.name already contains relative path from MEDIA_ROOT
     # e.g., "uploads/anonymized/12345/12345_abcd.DCM"
     relative_path = file.anonymized_path.name
-    print(relative_path)
+    # print(relative_path)
     relative_path = relative_path.replace("uploads/", "")
-    print(relative_path)
+    # print(relative_path)
     # Combine with MEDIA_ROOT
     file_path = os.path.join(settings.MEDIA_ROOT, relative_path)
-    print(file_path)
+    # print(file_path)
     if not os.path.exists(file_path):
         raise Http404("File does not exist")
 
