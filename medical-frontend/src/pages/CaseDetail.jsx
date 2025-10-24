@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "../api";
 import FileView from "./FileView";
+import { sendRequest } from "../request";
 
 const CaseDetail = () => {
   const { id } = useParams();
@@ -11,7 +12,7 @@ const CaseDetail = () => {
   useEffect(() => {
     const fetchCase = async () => {
       try {
-        const res = await api.get(`cases/${id}/`);
+        const res = await sendRequest('get', `/api/cases/${id}/`);
         setCaseData(res.data);
       } catch (error) {
         console.error("Error fetching case:", error);
