@@ -5,7 +5,7 @@ import DicomModal from './DicomModal';
 import UploadModal from '../components/UploadModal';
 import { sendRequest } from "../request";
 
-const FileView = () => {
+const FileView = ({case_id}) => {
   const [files, setFiles] = useState([]);
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -15,6 +15,7 @@ const FileView = () => {
   const [isSendModalOpen, setSendModalOpen] = useState(false);
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState("");
+  const [message, setMessage] = useState("");
 
 //   const handleFileUpload = async (event) => {
 //   const uploadedFile = event.target.files[0];
@@ -54,7 +55,7 @@ const FileView = () => {
   useEffect(() => {
     const fetchFiles = async () => {
       try {
-        const res = await sendRequest('get', '/api/files/');
+        const res = await sendRequest('get', '/api/files/?case='+case_id);
         setFiles(res.data);
       } catch (err) {
         setError("Failed to fetch files. Please try again.");
@@ -75,15 +76,18 @@ const FileView = () => {
   const handleSendFiles = async () => {
     if (!selectedUser) return alert("Select a user first.");
     try {
-      await axios.post("/api/files/send/", {
+      const payload = {
+        receiver_id: selectedUser,
         file_ids: selectedFiles,
-        to_user: selectedUser,
-      });
+        case_id: case_id,
+        message: message,
+      };
+      await sendRequest('post', '/api/files/send/', payload);
       alert("✅ Files sent successfully!");
       setSendModalOpen(false);
       setSelectedFiles([]);
     } catch (err) {
-      alert("❌ Failed to send files.");
+      alert("❌ Failed to send files." + err.response.data.error);
     }
   };
 
@@ -231,6 +235,15 @@ const FileView = () => {
             </select>
             
             </div>
+            <div style={messageContainerStyle}>
+          <label style={labelStyle}>Message (optional):</label>
+          <textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder="Add a short message for the receiver..."
+            style={messageBoxStyle}
+          />
+        </div>
             <button style={actionButtonStyle} onClick={handleSendFiles}>
               Send
             </button>
@@ -421,6 +434,29 @@ const selectStyle = {
   borderRadius: "8px",
   border: "1px solid #ccc",
   fontSize: "0.9rem",
+};
+
+const messageContainerStyle = {
+  marginBottom: "1.5rem",
+};
+
+const labelStyle = {
+  display: "block",
+  fontSize: "0.9rem",
+  color: "#333",
+  marginBottom: "0.3rem",
+};
+
+const messageBoxStyle = {
+  width: "100%",
+  height: "80px",
+  padding: "0.6rem",
+  border: "1px solid #ccc",
+  borderRadius: "6px",
+  resize: "none",
+  fontSize: "0.9rem",
+  fontFamily: "inherit",
+  outline: "none",
 };
 
 export default FileView;
