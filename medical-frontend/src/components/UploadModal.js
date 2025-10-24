@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { sendRequest } from "../request";
 
 const fileTypes = ["Lungs CT", "Brain MRI", "Chest X-Ray"]; // predefined list
 
@@ -21,11 +22,7 @@ export default function UploadModal({ isOpen, onClose, onUploadSuccess }) {
       formData.append("case_id", caseId);
       formData.append("filetype", fileType);
       formData.append("uploaded_file", file); // match Django backend
-
-      const response = await fetch("http://localhost:8000/upload/", {
-        method: "POST",
-        body: formData,
-      });
+      const response = await sendRequest('post', '/upload/', formData);
 
       if (!response.ok) {
         throw new Error(`Upload failed: ${response.status}`);
