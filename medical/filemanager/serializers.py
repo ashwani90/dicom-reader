@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import File, Case
+from .models import CaseRequest, File, Case
 from django.contrib.auth.models import User
 
 class UserSerializer(serializers.ModelSerializer):
@@ -45,3 +45,30 @@ class CaseSerializer(serializers.ModelSerializer):
             "created_by", "created_at", "updated_at", "files"
         ]
         read_only_fields = ["created_by", "created_at", "updated_at"]
+
+class CaseRequestSerializer(serializers.ModelSerializer):
+    sender_name = serializers.CharField(source="sender.username", read_only=True)
+    receiver_name = serializers.CharField(source="receiver.username", read_only=True)
+    case_number = serializers.CharField(source="case.case_id", read_only=True)
+    case_title = serializers.CharField(source="case.title", read_only=True)
+    case_id = serializers.CharField(source="case.id", read_only=True)
+    files = FileSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = CaseRequest
+        fields = [
+            "id",
+            "case",
+            "case_number",
+            "sender",
+            "sender_name",
+            "receiver",
+            "receiver_name",
+            "case_title",
+            "case_id",
+            "files",
+            "message",
+            "status",
+            "created_at",
+        ]
+        read_only_fields = ["id", "status", "created_at", "sender"]
