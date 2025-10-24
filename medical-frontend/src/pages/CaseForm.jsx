@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api";
+import { sendRequest } from "../request";
 
 const CaseForm = () => {
   const navigate = useNavigate();
@@ -22,7 +23,7 @@ const CaseForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await api.post("cases/", formData);
+      await sendRequest('post', '/api/cases/', formData);
       navigate("/cases");
     } catch (error) {
       console.error("Error creating case:", error);
