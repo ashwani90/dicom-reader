@@ -47,7 +47,7 @@ const CaseDetail = () => {
 
       <div style={sectionStyle}>
         <h3 style={sectionHeadingStyle}>Linked DICOM Files</h3>
-        <FileView />
+        <FileView case_id={caseData.id} />
         {/* <table style={tableStyle}>
           <thead>
             <tr>
