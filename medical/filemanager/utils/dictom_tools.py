@@ -35,44 +35,56 @@ def is_dicom_file(path: str) -> bool:
     except Exception:
         return False
 
-def anonymize_dicom(
-    src_path: str,
-    dst_path: str,
-    case_public_id: str
-) -> Tuple[bool, Optional[str], Optional[str]]:
+def anonymize_dicom(src_path: str, dst_path: str, case_public_id: str) -> Tuple[bool, Optional[str], Optional[str]]:
     """
+    Anonymizes a DICOM file and saves it to the destination path.
     Returns (success, modality, error_message)
     """
+    print(f"Anonymizing DICOM file: {src_path} -> {dst_path}")
     try:
-        ds = pydicom.dcmread(src_path)
-        # Remove private tags + curves
+        if not os.path.exists(src_path):
+            return False, None, f"Source file not found: {src_path}"
+
+        # Load dataset fully (not deferred)
+        ds = pydicom.dcmread(src_path, force=True)
+
+        # Remove private tags
         ds.remove_private_tags()
 
-        # Blank common PHI fields
+        # Blank PHI fields
         for tag in PHI_TAGS_TO_BLANK:
             if tag in ds:
                 ds[tag].value = ""
 
-        # Set safe patient fields
+        # Assign anonymized values
         ds.PatientName = ANON_PATIENT_NAME
         ds.PatientID = f"{ANON_PATIENT_ID_PREFIX}_{case_public_id}"
 
-        # Regenerate UIDs for Study/Series/SOP (de-link from source)
-        if "StudyInstanceUID" in ds:
-            ds.StudyInstanceUID = generate_uid()
-        if "SeriesInstanceUID" in ds:
-            ds.SeriesInstanceUID = generate_uid()
-        if "SOPInstanceUID" in ds:
-            ds.SOPInstanceUID = generate_uid()
+        # Regenerate unique UIDs
+        ds.StudyInstanceUID = generate_uid()
+        ds.SeriesInstanceUID = generate_uid()
+        ds.SOPInstanceUID = generate_uid()
 
-        # Save anonymized
+        # Ensure meta info exists
+        if not hasattr(ds, "file_meta") or not ds.file_meta:
+            ds.file_meta = pydicom.dataset.FileMetaDataset()
+        if not hasattr(ds.file_meta, "TransferSyntaxUID"):
+            ds.file_meta.TransferSyntaxUID = pydicom.uid.ExplicitVRLittleEndian
+
+        # Ensure directory exists
         os.makedirs(os.path.dirname(dst_path), exist_ok=True)
-        ds.save_as(dst_path)
 
-        modality = str(getattr(ds, "Modality", "") or "")
+        # Save anonymized DICOM with correct headers
+        ds.is_little_endian = True
+        ds.is_implicit_VR = False
+
+        ds.save_as(dst_path, write_like_original=False)
+
+        modality = getattr(ds, "Modality", "Unknown")
         return True, modality, None
+
     except Exception as e:
-        return False, None, str(e)
+        return False, None, f"Error anonymizing {src_path}: {str(e)}"
 
 def extract_dicom_metadata(dicom_path):
     """
