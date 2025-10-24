@@ -12,5 +12,5 @@ urlpatterns = [
     path('preview/<int:file_id>/', FilePreviewView.as_view(), name='file-preview'),
     path("api/files/", FileListView.as_view(), name="file-list"),
     path("api/", include(router.urls)),
-    path('serve-file/<str:filename>/', serve_file, name='serve_file'),
+    path('serve-file/<int:file_id>/', serve_file, name='serve_file'),
 ]
